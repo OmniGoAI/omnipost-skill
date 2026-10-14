@@ -1,0 +1,16 @@
+{
+  "scheduledAt": "2026-10-20 09:00",
+  "platforms": ["xiaohongshu", "douyin", "bilibili"],
+  "mode": "publish",
+  "spacingMinutes": 10,
+  "deliver": "auto",
+  "baseDir": "./",
+  "doc": {
+    "type": "video",
+    "title": "一条命令发 30 个平台",
+    "summary": "AI 写完，OmniPost 发出去。",
+    "tags": ["AI", "效率工具"],
+    "video": "./media/demo.mp4",
+    "cover": "./media/cover.jpg"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "targets": [
+    { "platform": "zhihu", "accountId": "default" },
+    { "platform": "csdn", "accountId": "default" },
+    { "platform": "weixin", "accountId": "default", "title": "公众号可以用另一个标题", "summary": "公众号摘要最多 120 字" }
+  ],
+  "mode": "draft",
+  "baseDir": "./",
+  "doc": {
+    "type": "article",
+    "title": "用 Claude Code 把一篇文章发到 30 个平台",
+    "summary": "一条命令，草稿先行，发布你来点。",
+    "tags": ["AI", "Agent", "内容分发"],
+    "markdown": "# 用 Claude Code 把一篇文章发到 30 个平台\n\n正文用 Markdown 写，图片用本地路径或 http(s) URL，不要转 base64。\n\n![配图](./images/demo.png)\n\n<mark>效果标记</mark>只有公众号完整支持，其它平台自动降级为纯文本。",
+    "cover": "./images/cover.jpg",
+    "extras": {
+      "cnblogs": { "postType": "article" },
+      "xiaohongshu": { "aiGenerated": false }
+    }
+  }
+}
