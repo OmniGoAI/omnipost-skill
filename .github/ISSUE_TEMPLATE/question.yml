@@ -1,0 +1,26 @@
+name: 问题 / Question or bug
+description: Skill、接入方法或 OmniPost 本身的问题。A question or bug about the Skill, the connection guides, or OmniPost itself.
+title: "问题："
+labels: ["问题"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: OmniPost 版本与系统 / OmniPost version and OS
+      placeholder: 0.5.59, Windows 11 / macOS 15
+  - type: input
+    id: agent
+    attributes:
+      label: Agent 与接入方式 / Agent and connection
+      placeholder: Claude Code + MCP SSE / OpenClaw + Skill / CLI
+  - type: textarea
+    id: what
+    attributes:
+      label: 发生了什么 / What happened
+      description: 贴 Agent 看到的返回（`code`、`stage`、错误文本）。Paste what the agent got back (`code`, `stage`, error text).
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望是什么 / What you expected

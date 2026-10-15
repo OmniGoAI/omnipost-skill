@@ -1,0 +1,36 @@
+name: 平台规则纠错 / Platform rule correction
+description: skills/omnipost/rules/ 里某条规则过时或写错了。A rule in skills/omnipost/rules/ is outdated or wrong.
+title: "规则："
+labels: ["规则"]
+body:
+  - type: dropdown
+    id: platform
+    attributes:
+      label: 平台 / Platform
+      options:
+        - xiaohongshu 小红书
+        - weixin 公众号
+        - douyin 抖音
+        - kuaishou 快手
+        - shipinhao 视频号
+        - bilibili B 站
+        - weibo 微博
+        - baijiahao 百家号
+        - toutiao 头条
+        - zhihu 知乎
+        - 其它 / other
+    validations:
+      required: true
+  - type: textarea
+    id: which
+    attributes:
+      label: 哪一条，现在怎么写的 / Which rule, as currently written
+    validations:
+      required: true
+  - type: textarea
+    id: fix
+    attributes:
+      label: 应该是什么，来源在哪 / What it should say, and the source
+      description: 平台公告、规则中心或后台提示的链接或截图。A link or screenshot of the platform's own notice, rule centre or editor hint.
+    validations:
+      required: true

@@ -28,6 +28,13 @@ OmniPost 提供 44 个 MCP 工具（`list_platforms`、`list_accounts`、`list_a
 claude mcp add --transport sse omnipost http://127.0.0.1:8787/sse
 ```
 
+OpenClaw 的远程 MCP 支持 `sse` 传输，一条命令加好并探测：
+
+```
+openclaw mcp add omnipost --url http://127.0.0.1:8787/sse --transport sse
+openclaw mcp doctor omnipost --probe
+```
+
 **stdio 传输**（只支持 stdio 的客户端）：把 `GET /api/health` 返回的 `mcp.stdio` 填进配置。Windows 上形如：
 
 ```json

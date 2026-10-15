@@ -1,0 +1,36 @@
+name: 聊聊 / Let's talk
+description: 用 Agent 发内容遇到的问题，20 分钟换 3 个月专业版。A 20-minute chat about how you publish with agents; 3 months of Pro in return.
+title: "聊聊："
+labels: ["聊聊"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        填下面三栏就行，不用客气。我们在 issue 里约时间，文字或语音都可以；聊完把 3 个月专业版兑换码贴给你。
+        Fill in the three fields below. We'll agree on a time in this issue, text or voice; you get a 3-month Pro code afterwards.
+  - type: input
+    id: agent
+    attributes:
+      label: 你在用哪个 Agent / Which agent
+      placeholder: Claude Code / OpenClaw / Codex / Cursor / 自研
+    validations:
+      required: true
+  - type: textarea
+    id: platforms
+    attributes:
+      label: 发哪些平台，现在怎么发 / Which platforms, and how do you publish today
+      placeholder: 比如：小红书 + 公众号，现在用 xiaohongshu-mcp 发小红书，公众号手动贴
+    validations:
+      required: true
+  - type: textarea
+    id: pain
+    attributes:
+      label: 最烦的一件事 / The one thing that annoys you most
+      placeholder: 封号、登录态老掉、一个平台一个工具、发完不知道结果……
+    validations:
+      required: true
+  - type: input
+    id: time
+    attributes:
+      label: 方便的时间 / When works for you（可不填 optional）
+      placeholder: 工作日晚上 / 周末下午
