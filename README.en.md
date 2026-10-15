@@ -4,6 +4,8 @@
 
 [中文](./README.md) · [SKILL.md](./skills/omnipost/SKILL.md) · [Connect your agent](./docs/connect.md) · [FAQ](./docs/faq.md) · [Download OmniPost](https://omnigoai.com/en/download/omnipost/)
 
+![OmniPost demo: one command publishes to Zhihu and CSDN and drops a WeChat Official Account draft](./docs/demo.gif)
+
 - **Write once, publish once**: Zhihu, CSDN, WeChat Official Accounts, Xiaohongshu, Bilibili, Douyin, Dev.to, Mastodon, Bluesky, WordPress… one entry point instead of one MCP server per platform.
 - **Your accounts stay on your machine**: sessions live in isolated local partitions and requests go out from your own browser session. Nothing is relayed through a cloud.
 - **Drafts by default, you press publish**: session-expiry warnings ahead of time, and posts that failed because of a lost login are retried automatically after you log back in.

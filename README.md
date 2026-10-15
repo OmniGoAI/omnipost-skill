@@ -4,6 +4,8 @@
 
 [English](./README.en.md) · [SKILL.md](./skills/omnipost/SKILL.md) · [接入各 agent](./docs/connect.md) · [FAQ](./docs/faq.md) · [下载 OmniPost](https://omnigoai.com/zh/download/omnipost/)
 
+![OmniPost 演示：一条命令发到知乎、CSDN，公众号进草稿箱](./docs/demo.gif)
+
 - **AI 写完，一条命令发出去**：知乎、CSDN、公众号、小红书、B站、抖音、视频号、Dev.to、Mastodon……一个入口，不用一个平台配一个 MCP。
 - **账号留在你自己的电脑上**：登录态存在本机独立会话分区，发出去的请求来自你自己的浏览器会话，不经过任何云端中转。
 - **默认进草稿箱，发布那一下你来点**：掉线提前提醒，因登录失效漏发的内容在重登后自动补发。
