@@ -86,7 +86,7 @@ export class AppConnection {
   async get() {
     if (this.client) return this.client;
     const endpoint = this.resolve();
-    const client = new Client({ name: 'omnipost-mcp-bridge', version: '0.1.1' });
+    const client = new Client({ name: 'omnipost-mcp-bridge', version: '0.1.2' });
     client.onclose = () => { if (this.client === client) this.client = null; };
     const connecting = client.connect(this.transportFactory(endpoint));
     let timer;
@@ -117,7 +117,7 @@ function shortCause(err) {
   return String(err?.cause?.code || err?.code || err?.message || err).slice(0, 160);
 }
 
-export function createBridgeServer({ connection = new AppConnection(), snapshot = loadSnapshot(), version = '0.1.1' } = {}) {
+export function createBridgeServer({ connection = new AppConnection(), snapshot = loadSnapshot(), version = '0.1.2' } = {}) {
   const server = new Server(
     { name: 'omnipost', version },
     {
