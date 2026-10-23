@@ -1,0 +1,1436 @@
+{
+  "exportedAt": "2026-10-23T09:04:14.596Z",
+  "tools": [
+    {
+      "name": "list_platforms",
+      "description": "列出 OmniPost 支持的所有平台及其能力：id、名称、capabilities、contentTypes、publishRequires（正式发布必填项）、extrasSchema（该平台专属参数：字段/类型/可选值/默认/是否已真机校准）、contentSpec（标题字数/标签数/图片数等写法规格）、calibratedAt（最近一次真机校准日期，空=未标注）。发布前按 contentSpec 裁标题、按 extrasSchema 决定要不要传 extras。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "list_accounts",
+      "description": "列出已登录的平台账号及登录态（valid/expired）。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "list_alerts",
+      "description": "登录态告警：哪些账号已失效需重登（expired）、哪些即将到期（expiring，含剩余小时数）、有哪些内容因登录失效正等着补发（retries）。另含授权对定时任务的影响：licensePaused = 因授权回落（试用结束/套餐到期）已暂停的任务数（升级后 48 小时内自动继续），licenseAtRisk = 仍待执行但按当前授权到点必被拦下的任务数。\n**分发前先调一次**：目标账号在 expired 里就先让用户重登，否则这次发布必然失败；在 expiring 里就提醒用户「今天内顺手重登一次」。若 retries 非空，说明之前有内容没发出去——重登后会自动补发，不要重复写一篇。licensePaused/licenseAtRisk 非 0 时提醒用户升级专业版，否则定时内容发不出去。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "list_account_groups",
+      "description": "列出账户分组：用户预先把一批账号命名成组（如「短视频组」=小红书+抖音+快手）。返回 [{name, members:[{platform,accountId,label,valid}]}]。用户可能直接说「发到 X 组」——此时在 create_draft/publish_post/schedule_post 传 groups:[\"X\"] 即可，组内账户会自动并入发布目标。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "check_auth",
+      "description": "检查指定平台账号当前是否处于登录态。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string",
+            "description": "平台 id，如 csdn"
+          },
+          "accountId": {
+            "type": "string",
+            "description": "账号 id，默认 default"
+          }
+        },
+        "required": [
+          "platform"
+        ]
+      }
+    },
+    {
+      "name": "request_login",
+      "description": "重新登录某个**已存在**的账号（弹登录窗口，真人完成）。新增账号请用 add_account。会阻塞直到登录成功或超时。会话过期（如微信「登录态超时」）时传 fresh=true 先清空旧会话强制重新扫码。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string",
+            "description": "平台 id，如 csdn"
+          },
+          "accountId": {
+            "type": "string",
+            "description": "账号 id，默认 default"
+          },
+          "fresh": {
+            "type": "boolean",
+            "description": "true=先清空旧 Cookie/会话再登录（强制重新扫码）"
+          }
+        },
+        "required": [
+          "platform"
+        ]
+      }
+    },
+    {
+      "name": "add_account",
+      "description": "为某平台**新增一个账号**：自动生成 accountId，弹出登录窗口由真人登录（支持同平台多账号，如多个 CSDN 号）。会阻塞直到登录成功或超时。返回新账号的 platform/accountId/label。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string",
+            "description": "平台 id，如 csdn"
+          },
+          "label": {
+            "type": "string",
+            "description": "账号备注名（可选，缺省用登录昵称）"
+          }
+        },
+        "required": [
+          "platform"
+        ]
+      }
+    },
+    {
+      "name": "set_account_label",
+      "description": "给某账号改备注名（label）。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string"
+          },
+          "accountId": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "platform",
+          "accountId",
+          "label"
+        ]
+      }
+    },
+    {
+      "name": "set_account_defaults",
+      "description": "锁定某账号的平台专属参数默认值（如抖音号永远勾「内容由 AI 生成」）。锁定后 publish_post/create_draft/schedule_post 省略该平台 extras 时自动套用；显式传入仍优先。不锁定时 OmniPost 会自动沿用该账号上次成功发布用的参数。clear=true 清除锁定。字段以 list_platforms 的 extrasSchema 为准，非法值直接报错。仅浏览器登录账号可设。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string"
+          },
+          "accountId": {
+            "type": "string",
+            "description": "缺省 default"
+          },
+          "extras": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "该平台的专属参数，如 {\"aiGenerated\":true}（也接受整张按平台分组的表）"
+          },
+          "category": {
+            "type": "string",
+            "description": "（可选）同时记住默认分类"
+          },
+          "clear": {
+            "type": "boolean",
+            "description": "true=清除锁定，回到「跟随上次使用」"
+          }
+        },
+        "required": [
+          "platform"
+        ]
+      }
+    },
+    {
+      "name": "remove_account",
+      "description": "移除某账号（登出并清除其本地会话/Cookie）。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string"
+          },
+          "accountId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "platform",
+          "accountId"
+        ]
+      }
+    },
+    {
+      "name": "create_draft",
+      "description": "把一篇已写好的文章保存为草稿（不正式发布）。OmniPost 只做分发，不生成内容——请传入完整成品。\n正文与视频**二选一**：图文传 markdown（或 html）；视频传 video（本地路径/URL，可无正文），视频平台见 video 字段说明。\n**图片直接用文件路径或 http(s) URL，不要自己转 base64**：本地图用绝对路径（如 D:\\\\out\\\\cover.png）或相对路径（如 ./cover.png，配合 baseDir），OmniPost 会自动读盘并转存到各平台图床。\n目标用 targets（推荐，支持同平台多账号）或 platforms 二选一：先调 list_accounts 拿到各账号的 {platform,accountId}，再用 targets 精确指定要发到哪些账号；只给 platforms 则发到这些平台下的**全部已登录账号**（同步分发）。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "标题（纯文本，不含 # 号）。各平台字数上限：weixin ≤64、xiaohongshu ≤20、shipinhao ≤22、douyin ≤30、bilibili ≤80、sohu ≤72、toutiao ≤30；超限会在发布前被 VALIDATION_FAILED 拦下，请按目标平台裁剪（或用 targets[].title 给每个目标不同标题）。"
+          },
+          "markdown": {
+            "type": "string",
+            "description": "正文（Markdown，不含标题行）。可内嵌效果标记子集：<u>/<mark>/<span style>（颜色/背景/字号/居中）——微信公众号完整支持，其他平台发布时自动降级为纯文本（不会露出裸标签）"
+          },
+          "html": {
+            "type": "string",
+            "description": "正文 HTML（可选；HTML 类平台如知乎/公众号会优先用它，否则由 markdown 转换）"
+          },
+          "summary": {
+            "type": "string",
+            "description": "摘要（可选）"
+          },
+          "cover": {
+            "type": "string",
+            "description": "封面图 URL 或 data URI。微信公众号两种登录都生效：扫码登录可选（自动上传素材并按 2.35:1/1:1 默认居中裁剪）；API 模式必填"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "标签（可选）"
+          },
+          "category": {
+            "type": "string",
+            "description": "分类（可选）"
+          },
+          "canonicalUrl": {
+            "type": "string",
+            "description": "规范链接(canonical)：内容原始/自有 URL；dev.to/hashnode/ghost 会写入以把 SEO 权重归原站（可选，其余平台忽略）"
+          },
+          "video": {
+            "type": "string",
+            "description": "视频文件：本地绝对路径 / http(s) URL / data:。给了 video 即按**视频**内容发布（可无正文），目标平台须支持视频：weibo/bilibili/baijiahao/sohu/xiaohongshu/shipinhao/douyin/kuaishou。封面只有 weibo/baijiahao/sohu 必填（其余平台自动取帧）。发视频前建议先 check_video 体检、rehearse_video 彩排（都不上传）。"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "article",
+              "video"
+            ],
+            "description": "内容类型，缺省按有无 video 自动推断；一般不用显式传。"
+          },
+          "extras": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "平台专属可选参数，按平台 id 分组，无关平台忽略；未声明的键原样透传。省略时自动套用该账号「锁定默认 / 上次使用」的值（显式传入永远优先）。发布结果里 extrasApplied/extrasIgnored 会说明哪些生效、哪些被忽略。各平台可用字段（标「未校准」的在真实页面上还没验证过，按可见文字定位，找不到会在结果里说明）：weibo: postType=article|status「微博形态」[article] · videoType=original|derivative|repost「视频类型」[video](未校准) · visibility=public|fans|self「可见范围」[video](未校准) · allowDownload=allow|deny「他人下载」[video](未校准)；xiaohongshu: aiGenerated=布尔「内容由 AI 生成」(默认 false)(未校准) · visibility=public|friends|self「可见范围」[video](未校准)；shipinhao: original=布尔「声明原创」(默认 false)[video] · aiGenerated=布尔「内容由 AI 生成」(默认 false)(未校准)；douyin: aiGenerated=布尔「内容由 AI 生成」(默认 false)(未校准) · visibility=public|friends|self「可见范围」[video](未校准) · allowDownload=allow|deny「他人下载」[video](未校准)；kuaishou: aiGenerated=布尔「内容由 AI 生成」(默认 false)(未校准) · visibility=public|friends|self「可见范围」[video](未校准) · allowDownload=allow|deny「他人下载」[video](未校准)；bilibili: aiGenerated=布尔「内容由 AI 生成」(默认 false)[article/video](未校准) · visibility=public|self「可见范围」[video](未校准)；baijiahao: aiGenerated=布尔「内容由 AI 生成」(默认 false)(未校准) · statement=none|repost|fiction|marketing|opinion「创作声明」[video](未校准)；cnblogs: postType=essay|article「发布形态」。示例：{\"douyin\":{\"aiGenerated\":true},\"cnblogs\":{\"postType\":\"article\"}}"
+          },
+          "targets": {
+            "type": "array",
+            "description": "目标账号列表（推荐，可精确到同平台不同账号）。每项可带目标级覆盖（title/summary/tags/category/extras），实现「同一篇稿、每个平台不同标题」",
+            "items": {
+              "type": "object",
+              "properties": {
+                "platform": {
+                  "type": "string",
+                  "description": "平台 id，如 csdn"
+                },
+                "accountId": {
+                  "type": "string",
+                  "description": "账号 id（来自 list_accounts）"
+                },
+                "title": {
+                  "type": "string",
+                  "description": "（可选）该目标专用标题，覆盖顶层 title"
+                },
+                "summary": {
+                  "type": "string",
+                  "description": "（可选）该目标专用摘要"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "（可选）该目标专用标签（整体替换顶层 tags）"
+                },
+                "category": {
+                  "type": "string",
+                  "description": "（可选）该目标专用分类"
+                },
+                "extras": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "description": "（可选）该目标专用专属参数，与顶层 extras 按平台深合并（目标级优先）"
+                }
+              },
+              "required": [
+                "platform"
+              ]
+            }
+          },
+          "platforms": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "目标平台 id 列表（同步到各平台全部已登录账号）；与 targets 二选一"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "账户分组名列表（用 list_account_groups 查看）；组内账户并入目标，与 targets/platforms 自动并集去重"
+          },
+          "baseDir": {
+            "type": "string",
+            "description": "解析正文里相对图片路径（如 ./cover.png）的基准目录（绝对路径）。用绝对图片路径时可省略。"
+          },
+          "forensics": {
+            "type": "boolean",
+            "description": "取证模式（视频首测用）：视频注入后把平台编辑表单的完整现场（控件、文案、按钮状态、页面提示）定时存到本机 ~/.omnipost/forensics/，结果带 forensicsFile。只写本地、不影响发布逻辑。正式账号测试时建议打开——一次上传拿回全部证据，之后对着记录排查，不必再传第二次。"
+          }
+        },
+        "required": [
+          "title"
+        ]
+      }
+    },
+    {
+      "name": "publish_post",
+      "description": "尝试正式发布文章（参数同 create_draft）。每个目标返回 stage（\"draft\"|\"published\"）与 published(bool)，自描述结果：\n- 平台 supports.publish=\"auto\" 且过校验 → published；缺必要项 → code \"VALIDATION_FAILED\" + missing 字段；\n- 平台 supports.publish=\"manual\"（如微信）→ 仅建草稿，返回 published:false + code \"MANUAL_PUBLISH\" + editorUrl（请引导人工到后台发布）。\n先用 list_platforms 查 supports.publish / publishRequires 即可预判。\n⚠️ 各平台内容规则不同：小红书/抖音/视频号等平台正文出现站外链接、二维码、微信号有**限流或封号风险**。OmniPost 不校验、不修改内容——发布前请按目标平台规则自行调整（装了 omnipost skill 的先读其 rules/<platform>.md）。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "markdown": {
+            "type": "string"
+          },
+          "html": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "cover": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "category": {
+            "type": "string"
+          },
+          "canonicalUrl": {
+            "type": "string",
+            "description": "规范链接(canonical)：SEO 归属，仅 dev.to/hashnode/ghost 生效（可选）"
+          },
+          "video": {
+            "type": "string",
+            "description": "视频文件：本地绝对路径 / http(s) URL / data:。给了 video 即按**视频**内容发布（可无正文），目标平台须支持视频：weibo/bilibili/baijiahao/sohu/xiaohongshu/shipinhao/douyin/kuaishou。封面只有 weibo/baijiahao/sohu 必填（其余平台自动取帧）。发视频前建议先 check_video 体检、rehearse_video 彩排（都不上传）。"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "article",
+              "video"
+            ],
+            "description": "内容类型，缺省按有无 video 自动推断；一般不用显式传。"
+          },
+          "extras": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "平台专属可选参数，按平台 id 分组，无关平台忽略；未声明的键原样透传。省略时自动套用该账号「锁定默认 / 上次使用」的值（显式传入永远优先）。发布结果里 extrasApplied/extrasIgnored 会说明哪些生效、哪些被忽略。各平台可用字段（标「未校准」的在真实页面上还没验证过，按可见文字定位，找不到会在结果里说明）：weibo: postType=article|status「微博形态」[article] · videoType=original|derivative|repost「视频类型」[video](未校准) · visibility=public|fans|self「可见范围」[video](未校准) · allowDownload=allow|deny「他人下载」[video](未校准)；xiaohongshu: aiGenerated=布尔「内容由 AI 生成」(默认 false)(未校准) · visibility=public|friends|self「可见范围」[video](未校准)；shipinhao: original=布尔「声明原创」(默认 false)[video] · aiGenerated=布尔「内容由 AI 生成」(默认 false)(未校准)；douyin: aiGenerated=布尔「内容由 AI 生成」(默认 false)(未校准) · visibility=public|friends|self「可见范围」[video](未校准) · allowDownload=allow|deny「他人下载」[video](未校准)；kuaishou: aiGenerated=布尔「内容由 AI 生成」(默认 false)(未校准) · visibility=public|friends|self「可见范围」[video](未校准) · allowDownload=allow|deny「他人下载」[video](未校准)；bilibili: aiGenerated=布尔「内容由 AI 生成」(默认 false)[article/video](未校准) · visibility=public|self「可见范围」[video](未校准)；baijiahao: aiGenerated=布尔「内容由 AI 生成」(默认 false)(未校准) · statement=none|repost|fiction|marketing|opinion「创作声明」[video](未校准)；cnblogs: postType=essay|article「发布形态」。示例：{\"douyin\":{\"aiGenerated\":true},\"cnblogs\":{\"postType\":\"article\"}}"
+          },
+          "targets": {
+            "type": "array",
+            "description": "目标账号列表；每项可带目标级覆盖（title/summary/tags/category/extras）",
+            "items": {
+              "type": "object",
+              "properties": {
+                "platform": {
+                  "type": "string"
+                },
+                "accountId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string",
+                  "description": "（可选）该目标专用标题，覆盖顶层 title"
+                },
+                "summary": {
+                  "type": "string",
+                  "description": "（可选）该目标专用摘要"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "（可选）该目标专用标签（整体替换顶层 tags）"
+                },
+                "category": {
+                  "type": "string",
+                  "description": "（可选）该目标专用分类"
+                },
+                "extras": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "description": "（可选）该目标专用专属参数，与顶层 extras 按平台深合并（目标级优先）"
+                }
+              },
+              "required": [
+                "platform"
+              ]
+            }
+          },
+          "platforms": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "账户分组名列表（用 list_account_groups 查看）；组内账户并入目标，与 targets/platforms 自动并集去重"
+          },
+          "baseDir": {
+            "type": "string",
+            "description": "解析正文里相对图片路径的基准目录（绝对路径）。用绝对图片路径时可省略。"
+          },
+          "spacingMinutes": {
+            "type": "number",
+            "description": "多目标间隔错峰（分钟，默认 0=同时发）。>0 时不再同步等待，而是拆成一批单目标定时任务按 targets 顺序依次发出（第 1 个 30 秒内，之后每隔 N 分钟一个）；每个目标返回 stage=\"queued\"、code=\"QUEUED\"、scheduledFor、scheduleId、batchId，用 list_schedules 看进度、cancel_schedule(batchId) 取消整批。策略 minSpacingMinutes 是下限（set_policy 可设）。"
+          },
+          "forensics": {
+            "type": "boolean",
+            "description": "取证模式（视频首测用）：视频注入后把平台编辑表单的完整现场（控件、文案、按钮状态、页面提示）定时存到本机 ~/.omnipost/forensics/，结果带 forensicsFile。只写本地、不影响发布逻辑。正式账号测试时建议打开——一次上传拿回全部证据，之后对着记录排查，不必再传第二次。"
+          }
+        },
+        "required": [
+          "title"
+        ]
+      }
+    },
+    {
+      "name": "publish_draft",
+      "description": "把一条**已存在的草稿**提升为正式发布（两步走第二步：先 create_draft 拿到 postId，审核后再调本工具）。用 list_posts({stage:\"draft\"}) 可查出草稿的 postId。manual 平台会返回 code \"MANUAL_ONLY\"（需到平台后台人工发布）。正式发布必填项（如**掘金的 category/tags/summary**）建草稿时通常没带——在本工具直接补传即可，不要用同标题重新 publish_post（会触发 24h 去重）。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string",
+            "description": "平台 id"
+          },
+          "accountId": {
+            "type": "string",
+            "description": "账号 id，默认 default"
+          },
+          "postId": {
+            "type": "string",
+            "description": "草稿的 postId（来自 create_draft 或 list_posts）"
+          },
+          "category": {
+            "type": "string",
+            "description": "分类（掘金正式发布必填；可选值用 categories 查询）"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "标签（掘金正式发布需 ≥1 个平台已有标签）"
+          },
+          "summary": {
+            "type": "string",
+            "description": "摘要（部分平台正式发布必填）"
+          },
+          "cover": {
+            "type": "string",
+            "description": "封面图路径/URL（可选）"
+          }
+        },
+        "required": [
+          "platform",
+          "postId"
+        ]
+      }
+    },
+    {
+      "name": "schedule_post",
+      "description": "把一篇文章安排到**指定时间**自动分发（建草稿或正式发布）。参数同 create_draft，外加触发时间：用 at（ISO8601 或 \"YYYY-MM-DD HH:mm\" 本地时间）或 scheduledAt（毫秒时间戳）二选一；mode 缺省 draft。创建时即锁定目标账号并留存内容快照。\n两种交付方式（deliver，默认 auto）：① 平台自带定时——mode=publish 且目标平台声明了 platformSchedule（list_platforms 可查，如头条 / 抖音 / 快手 / 视频号 / 小红书 / B 站视频）且时间在其窗口内时，**立即**把内容连同发出时间交给平台，由平台到点发出，之后关机、登录失效都不影响（取消要到平台后台）；② 本地定时——其余目标到点由桌面应用后台执行（需保持应用运行；关闭期间错过的任务会在下次启动后立即补发）。平台定时设不上会自动改为本地定时并在任务 error 里说明。\nspacingMinutes>0 时各目标按顺序错开 N 分钟。返回任务（多条时带 batch）。用 list_schedules 查看、cancel_schedule 取消。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "markdown": {
+            "type": "string"
+          },
+          "html": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "cover": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "category": {
+            "type": "string"
+          },
+          "canonicalUrl": {
+            "type": "string",
+            "description": "规范链接(canonical)：SEO 归属，仅 dev.to/hashnode/ghost 生效（可选）"
+          },
+          "video": {
+            "type": "string",
+            "description": "视频文件：本地绝对路径 / http(s) URL / data:。给了 video 即按**视频**内容发布（可无正文），目标平台须支持视频：weibo/bilibili/baijiahao/sohu/xiaohongshu/shipinhao/douyin/kuaishou。封面只有 weibo/baijiahao/sohu 必填（其余平台自动取帧）。发视频前建议先 check_video 体检、rehearse_video 彩排（都不上传）。"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "article",
+              "video"
+            ],
+            "description": "内容类型，缺省按有无 video 自动推断；一般不用显式传。"
+          },
+          "extras": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "平台专属可选参数，按平台 id 分组，如 {\"cnblogs\":{\"postType\":\"article\"}}（缺省随笔）、{\"weibo\":{\"postType\":\"status\"}}（发普通微博，无草稿态须 mode=publish）"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "账户分组名列表（用 list_account_groups 查看）；组内账户并入目标，与 targets/platforms 自动并集去重"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "publish"
+            ],
+            "description": "草稿 / 正式发布，缺省 draft"
+          },
+          "at": {
+            "type": "string",
+            "description": "触发时间（ISO8601 或 \"YYYY-MM-DD HH:mm\" 本地时间）；与 scheduledAt 二选一"
+          },
+          "scheduledAt": {
+            "type": "number",
+            "description": "触发时间戳(ms)；与 at 二选一"
+          },
+          "deliver": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "platform",
+              "local"
+            ],
+            "description": "交付方式：auto（默认）支持的平台交给平台自带定时、其余本地；platform 尽量交给平台（不满足条件的目标退回本地并说明）；local 全部本地定时。草稿模式永远本地。"
+          },
+          "spacingMinutes": {
+            "type": "number",
+            "description": "目标间隔错峰（分钟，默认 0）。>0 时第 i 个目标在 at + i×N 分钟发出，拆成一批任务（返回带 batch）。"
+          },
+          "targets": {
+            "type": "array",
+            "description": "目标账号列表；每项可带目标级覆盖（title/summary/tags/category/extras）",
+            "items": {
+              "type": "object",
+              "properties": {
+                "platform": {
+                  "type": "string"
+                },
+                "accountId": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string",
+                  "description": "（可选）该目标专用标题，覆盖顶层 title"
+                },
+                "summary": {
+                  "type": "string",
+                  "description": "（可选）该目标专用摘要"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "（可选）该目标专用标签（整体替换顶层 tags）"
+                },
+                "category": {
+                  "type": "string",
+                  "description": "（可选）该目标专用分类"
+                },
+                "extras": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "description": "（可选）该目标专用专属参数，与顶层 extras 按平台深合并（目标级优先）"
+                }
+              },
+              "required": [
+                "platform"
+              ]
+            }
+          },
+          "platforms": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "baseDir": {
+            "type": "string",
+            "description": "解析正文里相对图片路径的基准目录（绝对路径）。"
+          }
+        },
+        "required": [
+          "title"
+        ]
+      }
+    },
+    {
+      "name": "list_schedules",
+      "description": "查询定时发布任务（含触发时间、目标、模式、状态）。status 可选 pending/running/done/failed/canceled/paused（paused = 授权回落免费版后因需专业版而暂停，升级后 48 小时内自动继续，pauseReason=LICENSE_REQUIRED）。每项可带 deliverMode（platform=已/将交给平台自带定时，publishAt 为平台发出时间；local 或缺省=本地到点发）与 batch（间隔错峰 / 平台定时拆出的一组：size/done/failed/pending/nextAt）。返回 {items,total}。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "running",
+              "done",
+              "failed",
+              "canceled",
+              "paused"
+            ]
+          },
+          "platform": {
+            "type": "string",
+            "description": "按平台筛选"
+          },
+          "batchId": {
+            "type": "string",
+            "description": "只看某一批（publish_post / schedule_post 返回的 batchId）"
+          },
+          "q": {
+            "type": "string",
+            "description": "按标题模糊搜索"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "offset": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    {
+      "name": "cancel_schedule",
+      "description": "取消一条**待执行或已暂停**的定时任务（status=pending/paused），或传 batchId 取消整批里所有未执行的。任务记录保留（状态置 canceled），如需彻底删除用 remove_schedule。id / batchId 来自 list_schedules。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "定时任务 id（与 batchId 二选一）"
+          },
+          "batchId": {
+            "type": "string",
+            "description": "批次 id：取消该批次里全部待执行 / 已暂停的任务"
+          }
+        }
+      }
+    },
+    {
+      "name": "get_schedule",
+      "description": "取一条定时任务的**完整内容**（含 doc 正文快照、目标账号、执行结果）。list_schedules 为省流量不返回正文，要看/改内容前先用它取回。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "定时任务 id"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      }
+    },
+    {
+      "name": "update_schedule",
+      "description": "修改一条**待执行**的定时任务（仅 status=pending 可改）：改触发时间、改目标账号、改草稿/正式发布、改内容。只传要改的字段，未传的保持不变。改时间用 at 或 scheduledAt；改内容需同时给 title + markdown/html（会整体替换内容快照）。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "定时任务 id"
+          },
+          "at": {
+            "type": "string",
+            "description": "新的触发时间（ISO8601 或 \"YYYY-MM-DD HH:mm\" 本地时间）；与 scheduledAt 二选一"
+          },
+          "scheduledAt": {
+            "type": "number",
+            "description": "新的触发时间戳(ms)；与 at 二选一"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "publish"
+            ],
+            "description": "改为草稿 / 正式发布"
+          },
+          "title": {
+            "type": "string",
+            "description": "改内容：标题（与 markdown/html 一起给）"
+          },
+          "markdown": {
+            "type": "string",
+            "description": "改内容：Markdown 正文"
+          },
+          "html": {
+            "type": "string",
+            "description": "改内容：HTML 正文（与 markdown 二选一）"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "cover": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "video": {
+            "type": "string",
+            "description": "视频文件路径/URL（视频类内容）"
+          },
+          "targets": {
+            "type": "array",
+            "description": "改目标账号（整体替换）",
+            "items": {
+              "type": "object",
+              "properties": {
+                "platform": {
+                  "type": "string"
+                },
+                "accountId": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "platform"
+              ]
+            }
+          },
+          "platforms": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "改目标平台（展开为各平台全部已登录账号）"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "改目标为账户分组（创建时即展开锁定）"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      }
+    },
+    {
+      "name": "run_schedule",
+      "description": "**立即执行**一条定时任务，不等到点（用于手动触发或失败重试）。已执行成功（status=done）的任务会被拒绝，避免向平台重复发布同一篇内容——需要再发请用 publish_post 重新提交。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "定时任务 id"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      }
+    },
+    {
+      "name": "remove_schedule",
+      "description": "**彻底删除**一条定时任务记录（不可恢复）。只是想让它不执行、但保留记录，用 cancel_schedule。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "定时任务 id"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      }
+    },
+    {
+      "name": "save_account_group",
+      "description": "创建或更新一个账户分组（按名称 upsert：同名则覆盖成员）。分组把一批账号命名成一组（如「短视频组」=小红书+抖音+快手），之后发布时传 groups:[\"短视频组\"] 即可整组分发。members 直接给账号列表，或用 platforms 展开为这些平台下的全部已登录账号。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "分组名称（同名覆盖）"
+          },
+          "members": {
+            "type": "array",
+            "description": "成员账号列表；与 platforms 二选一（都给则并集去重）",
+            "items": {
+              "type": "object",
+              "properties": {
+                "platform": {
+                  "type": "string"
+                },
+                "accountId": {
+                  "type": "string",
+                  "description": "默认 default"
+                }
+              },
+              "required": [
+                "platform"
+              ]
+            }
+          },
+          "platforms": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "按平台展开为其全部已登录账号"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      }
+    },
+    {
+      "name": "remove_account_group",
+      "description": "删除一个账户分组（按分组名或 id）。只删分组这个「集合」，组内账号本身不受影响。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "ref": {
+            "type": "string",
+            "description": "分组名称或 id"
+          }
+        },
+        "required": [
+          "ref"
+        ]
+      }
+    },
+    {
+      "name": "get_post",
+      "description": "取一条发布记录的**完整内容**（含正文 body）。list_posts 为省流量只返回元数据 + hasBody 标记，需要看原文（如复用内容、排查发布结果）时用它按 id 取回。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "发布记录 id（来自 list_posts 的 id 字段）"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      }
+    },
+    {
+      "name": "get_status",
+      "description": "检查 OmniPost 桌面应用是否在运行并就绪（返回运行状态 + 已接入平台数 + 已登录账号数）。建议在批量操作前先调用确认连通。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "preview_content",
+      "description": "把 Markdown 渲染成 HTML 预览（用与发布相同的渲染器），用于发布前自检内容效果。返回 {html}。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "markdown": {
+            "type": "string",
+            "description": "要预览的 Markdown 正文"
+          }
+        },
+        "required": [
+          "markdown"
+        ]
+      }
+    },
+    {
+      "name": "list_platform_credentials",
+      "description": "列出各平台已配置的 API 凭据（敏感字段已打码）。用于查看微信公众号等平台的 API 配置状态。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "set_platform_credentials",
+      "description": "为某平台配置 API 凭据（如微信公众号 appId/appSecret）。凭据仅保存在本机。海外平台支持多账号：用 accountId 区分（默认 default），各账号彼此隔离。可先用 list_platforms 查看该平台 apiConfig 需要哪些字段。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string",
+            "description": "平台 id，如 weixin"
+          },
+          "accountId": {
+            "type": "string",
+            "description": "账号 id（多账号隔离用，默认 default）"
+          },
+          "credentials": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "凭据键值对，如 {\"appId\":\"...\",\"appSecret\":\"...\"}"
+          }
+        },
+        "required": [
+          "platform",
+          "credentials"
+        ]
+      }
+    },
+    {
+      "name": "remove_platform_credentials",
+      "description": "删除某平台某账号已配置的 API 凭据。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string"
+          },
+          "accountId": {
+            "type": "string",
+            "description": "账号 id，默认 default"
+          }
+        },
+        "required": [
+          "platform"
+        ]
+      }
+    },
+    {
+      "name": "get_policy",
+      "description": "读取发布策略配置（每账号每日上限 / 同标题去重 / 连续失败熔断 / 禁发时段 / 草稿门禁）。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "set_policy",
+      "description": "更新发布策略（合并写入）。global 改全局，platforms 改某平台覆盖。字段：dailyLimitPerAccount(0=不限)、dedupWindowHours(0=关)、circuitBreakerThreshold(0=关)、circuitBreakerCooldownMinutes、blackoutHours(如 [[0,7]])、minSpacingMinutes(多目标分发的最小间隔分钟，0=同时发；未显式传 spacingMinutes 时作为下限，按目标涉及平台取最大值)。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "global": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "全局策略字段"
+          },
+          "platforms": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "按平台覆盖，如 {\"weixin\":{\"dailyLimitPerAccount\":1}}"
+          }
+        }
+      }
+    },
+    {
+      "name": "list_posts",
+      "description": "查询发布/草稿记录（含平台、账号、状态、编辑器链接），支持筛选与分页。返回 {items,total,limit,offset}。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string",
+            "description": "按平台筛选，如 csdn"
+          },
+          "accountId": {
+            "type": "string",
+            "description": "按账号筛选（需配合 platform）"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "success",
+              "failed"
+            ],
+            "description": "按结果筛选"
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published"
+            ],
+            "description": "按阶段筛选（草稿 / 已发布）"
+          },
+          "q": {
+            "type": "string",
+            "description": "按标题模糊搜索"
+          },
+          "since": {
+            "type": "number",
+            "description": "起始时间戳(ms)，只看此后的记录"
+          },
+          "until": {
+            "type": "number",
+            "description": "结束时间戳(ms)"
+          },
+          "limit": {
+            "type": "number",
+            "description": "返回条数，默认 50"
+          },
+          "offset": {
+            "type": "number",
+            "description": "分页偏移，默认 0"
+          }
+        }
+      }
+    },
+    {
+      "name": "list_stock_providers",
+      "description": "列出免费图库（Pixabay / Pexels / Unsplash）及其配置状态——**在 search_stock_images 之前先调这个**，看哪些图库用户已配好 API Key（configured:true）。只有已配置的才能搜。返回 [{id, name, configured}]。若全部 configured:false，提示用户去 OmniPost 设置里填对应图库的免费 API Key（图库 Key 只能在应用内配置，agent 无法代设）。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "search_stock_images",
+      "description": "在免费图库（Pixabay / Pexels / Unsplash）搜索可商用图片，用于给文章配图或做封面。provider 需用户已在 OmniPost 配好该图库的免费 API Key（可先用 list_stock_providers 查哪些已配置）——未配置会报错，此时请提示用户去 OmniPost 里配置。返回 {items:[{id, provider, downloadUrl(可直接作图片地址), thumb, width, height, author, source, trackUrl}], total}。注意：Pexels/Unsplash 授权要求署名——工具不会自动加署名，是否署名由你或用户决定，可用返回的 author/source 自行标注。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": [
+              "pixabay",
+              "pexels",
+              "unsplash"
+            ],
+            "description": "图库来源"
+          },
+          "query": {
+            "type": "string",
+            "description": "搜索关键词（英文命中效果更好）"
+          },
+          "page": {
+            "type": "number",
+            "description": "页码，默认 1"
+          },
+          "perPage": {
+            "type": "number",
+            "description": "每页数量，默认 24（≤50）"
+          }
+        },
+        "required": [
+          "provider",
+          "query"
+        ]
+      }
+    },
+    {
+      "name": "use_stock_image",
+      "description": "选用一张图库图片，返回可直接用于 publish_post 的公网图片 URL（放进 doc.cover 作封面，或写进正文 markdown 的 ![](url)）。**Unsplash 授权要求「使用时触发下载埋点」，本工具会自动完成**，故用 Unsplash 图前务必调用它。item 传 search_stock_images 返回的整条候选对象。返回 {url, author, source, attribution}（attribution 为建议署名文案，用不用由你决定）。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": [
+              "pixabay",
+              "pexels",
+              "unsplash"
+            ]
+          },
+          "item": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "来自 search_stock_images 的候选图对象"
+          }
+        },
+        "required": [
+          "provider",
+          "item"
+        ]
+      }
+    },
+    {
+      "name": "list_platform_categories",
+      "description": "查询某平台发文可选的分类/专栏（发布前调用，把返回的 name 填进 create_draft/publish_post 的 category 字段）。分类影响平台推荐/曝光，正式发布前建议先查。source:\"live\"=实时查平台（如掘金 8 大分类、CSDN 个人专栏——账号级）；\"static\"=固定枚举；supported:false 有两种：带 categoryRequired:true 表示**该平台分类必填但无列表接口**（按 note 的说明取值，如 51CTO 只收数字 cate_id），否则表示该平台无分类概念。返回 {supported, source, categoryRequired?, note?, categories:[{id,name}]}。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string",
+            "description": "平台 id，如 juejin"
+          },
+          "accountId": {
+            "type": "string",
+            "description": "账号 id，默认 default（账号级分类如 CSDN 专栏需要）"
+          }
+        },
+        "required": [
+          "platform"
+        ]
+      }
+    },
+    {
+      "name": "get_post_metrics",
+      "description": "回采某条已发布文章的运营数据（阅读/点赞/评论/收藏 等）。**各平台维度不一致**——返回的 metrics.fields 是自描述数组，每项 {key, label:{zh-CN,en-US}, value}：掘金/CSDN 给 阅读+点赞+评论+收藏，知乎给 赞同+评论（无阅读），海外平台各异。**渲染时遍历 fields 用 label 显示，不要写死字段名**。支持哪些平台看 list_platforms 里 metrics=true（csdn / juejin / zhihu / dev.to / hashnode / reddit / mastodon 系 / bluesky…），每个平台的 metricFields 预告了会有哪些维度。只读、按需拉取 + 默认 1h 缓存（force=true 强制刷新）。传 recordId（来自 list_posts 的 id，会回写入库并返回 delta 增量）或 platform+postId。返回 {supported, metrics:{fields:[...], ...canonicalFlat}, delta?, cached?}；不支持的平台返回 supported:false。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string",
+            "description": "平台 id，如 juejin"
+          },
+          "accountId": {
+            "type": "string",
+            "description": "账号 id，默认 default"
+          },
+          "recordId": {
+            "type": "string",
+            "description": "发布记录 id（来自 list_posts 的 id）；给了才会回写入库并计算增量"
+          },
+          "postId": {
+            "type": "string",
+            "description": "平台帖子 id（不给 recordId 时用）"
+          },
+          "force": {
+            "type": "boolean",
+            "description": "true=绕过 1h 缓存强制刷新"
+          }
+        },
+        "required": [
+          "platform"
+        ]
+      }
+    },
+    {
+      "name": "get_publish_status",
+      "description": "回查一篇已发布/草稿的**真实存活状态**——解决\"发出去到底成没成、是不是被拦/在审核\"。归一化枚举：reviewing(审核中) / published(已发布) / rejected(未通过) / offline(已下架) / draft(草稿) / unknown(识别不了)。用发布时同一套登录态到平台自有接口查。传 recordId（来自 list_posts 的 id，最省事：自动取标题+postId 并把状态回写入库）或 platform + (postId / title)。返回 {supported, status, label, url?}；平台没实现回查则 supported:false。适合发布后核对、以及定期巡检\"哪几篇被拦了\"。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string",
+            "description": "平台 id，如 csdn"
+          },
+          "accountId": {
+            "type": "string",
+            "description": "账号 id，默认 default"
+          },
+          "recordId": {
+            "type": "string",
+            "description": "发布记录 id（来自 list_posts 的 id）；给了会用其标题/postId 并把状态回写该记录"
+          },
+          "postId": {
+            "type": "string",
+            "description": "平台帖子 id（按 id 精确查）"
+          },
+          "title": {
+            "type": "string",
+            "description": "文章标题（用于在作品列表里匹配）"
+          }
+        },
+        "required": [
+          "platform"
+        ]
+      }
+    },
+    {
+      "name": "check_video",
+      "description": "视频体检（只读本地文件，不上传、不联网）：读出视频的大小 / 时长 / 宽高 / 横竖版，并按各平台真实规格（取自平台创作者网站前端）给出 errors（平台一定会拒：超大小、超时长、太短、标题字数不够）与 warnings（会被截断或需注意）。发视频前先调它，按结果改文件或文案，省一次注定失败的上传。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "本地视频文件绝对路径（网址视频无法体检）"
+          },
+          "platforms": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "只看这些平台（缺省=全部支持视频的平台）"
+          },
+          "title": {
+            "type": "string",
+            "description": "打算用的标题（检查字数）"
+          },
+          "summary": {
+            "type": "string",
+            "description": "打算用的视频描述（检查字数）"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "打算用的话题 / 标签（检查个数）"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    },
+    {
+      "name": "rehearse_video",
+      "description": "视频发布彩排（零上传）：对每个目标账号完整走一遍发布流程——查登录态、打开上传页、等文件框出现——在把视频放进文件框之前停下。返回每个目标的 checks（走通了哪些步骤）、page（上传页 URL、文件框、主要按钮、页面提示）、videoWarnings / missing（体检与必填项）。不落发布记录、不占配额。接口直传的平台（百家号/微博/搜狐）只校验登录与体检。正式账号上传有风控成本：真正上传前先彩排。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "标题（可选，用于检查字数）"
+          },
+          "summary": {
+            "type": "string",
+            "description": "视频描述（可选）"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "video": {
+            "type": "string",
+            "description": "本地视频路径（可选；给了就一并体检。彩排本身不会上传它）"
+          },
+          "cover": {
+            "type": "string",
+            "description": "封面（可选；用于检查必填项）"
+          },
+          "extras": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "平台专属可选参数，按平台 id 分组，无关平台忽略；未声明的键原样透传。省略时自动套用该账号「锁定默认 / 上次使用」的值（显式传入永远优先）。发布结果里 extrasApplied/extrasIgnored 会说明哪些生效、哪些被忽略。各平台可用字段（标「未校准」的在真实页面上还没验证过，按可见文字定位，找不到会在结果里说明）：weibo: postType=article|status「微博形态」[article] · videoType=original|derivative|repost「视频类型」[video](未校准) · visibility=public|fans|self「可见范围」[video](未校准) · allowDownload=allow|deny「他人下载」[video](未校准)；xiaohongshu: aiGenerated=布尔「内容由 AI 生成」(默认 false)(未校准) · visibility=public|friends|self「可见范围」[video](未校准)；shipinhao: original=布尔「声明原创」(默认 false)[video] · aiGenerated=布尔「内容由 AI 生成」(默认 false)(未校准)；douyin: aiGenerated=布尔「内容由 AI 生成」(默认 false)(未校准) · visibility=public|friends|self「可见范围」[video](未校准) · allowDownload=allow|deny「他人下载」[video](未校准)；kuaishou: aiGenerated=布尔「内容由 AI 生成」(默认 false)(未校准) · visibility=public|friends|self「可见范围」[video](未校准) · allowDownload=allow|deny「他人下载」[video](未校准)；bilibili: aiGenerated=布尔「内容由 AI 生成」(默认 false)[article/video](未校准) · visibility=public|self「可见范围」[video](未校准)；baijiahao: aiGenerated=布尔「内容由 AI 生成」(默认 false)(未校准) · statement=none|repost|fiction|marketing|opinion「创作声明」[video](未校准)；cnblogs: postType=essay|article「发布形态」。示例：{\"douyin\":{\"aiGenerated\":true},\"cnblogs\":{\"postType\":\"article\"}}"
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "platform": {
+                  "type": "string"
+                },
+                "accountId": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "platform"
+              ]
+            }
+          },
+          "platforms": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "read_platform_page",
+      "description": "运营观测（只读）：在某平台账号的**登录会话**里打开一个该平台页面，返回页面正文文本 + 页内同域链接列表。评论区、消息通知、创作者后台数据都用它看——你（agent）自己决定看哪个页面、自己读懂内容。返回的 links 可用于「跳页」：从创作者中心页找到评论管理页的链接，再 read 那个 URL。限制：URL 必须属于该平台自己的站点（白名单校验）；只读不点击；每账号 5 分钟最多 20 次。发现值得回复的评论时，用 open_platform_page 弹窗交给真人处理，不要尝试自动回复。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string",
+            "description": "平台 id，如 zhihu"
+          },
+          "accountId": {
+            "type": "string",
+            "description": "账号 id，默认 default"
+          },
+          "url": {
+            "type": "string",
+            "description": "要阅读的页面 URL（必须是该平台自己的域名）"
+          },
+          "maxChars": {
+            "type": "number",
+            "description": "正文最大字符数，默认 40000（超出截断并置 truncated:true）"
+          }
+        },
+        "required": [
+          "platform",
+          "url"
+        ]
+      }
+    },
+    {
+      "name": "open_platform_page",
+      "description": "运营行动入口：用某平台账号的登录会话弹出一个**可见**窗口并定位到指定页面（如某条评论所在页）。用途：你起草好回复文案后，开窗让**真人**粘贴发送——回复/点赞等互动动作永远由人完成（平台对机器互动风控严格）。同账号重复调用会复用同一窗口。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string",
+            "description": "平台 id"
+          },
+          "accountId": {
+            "type": "string",
+            "description": "账号 id，默认 default"
+          },
+          "url": {
+            "type": "string",
+            "description": "要打开的页面 URL（必须是该平台自己的域名）；缺省=平台主页，已登录账号会直接进入登录后界面"
+          }
+        },
+        "required": [
+          "platform"
+        ]
+      }
+    },
+    {
+      "name": "get_account_health",
+      "description": "账号健康：查询最近的登录失效 / 限频风控 / 发布失败事件（OmniPost 在发布与数据回采中亲历的平台信号，结构化落盘），含按账号的 24h 分类计数与最近一条事件。排期发布前先看：某账号 rateLimit24h>0 就该避让、needLogin24h>0 就该提示用户重登。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string",
+            "description": "只看某平台（可选）"
+          },
+          "accountId": {
+            "type": "string",
+            "description": "只看某账号（可选）"
+          },
+          "since": {
+            "type": "number",
+            "description": "只看该毫秒时间戳之后的事件（可选）"
+          }
+        }
+      }
+    },
+    {
+      "name": "get_account_overview",
+      "description": "账号级运营数据（创作者中心概览）：粉丝/获赞/关注等**总量** + 平台自己给的**近 7 日（或昨日）指标**（含平台标注的环比 vs）+ OmniPost 本地快照算出的**较上次/日/周/月增长**（growth）。与 get_post_metrics（单篇）互补——看账号整体走势、判断发布节奏该不该调时用它。用发布同一套登录态到创作者后台**只读**读取；字段自描述：overview.fields / recent.fields 均为 [{key,label:{zh-CN,en-US},value,vs?,vsPercent?}]，**渲染时遍历 fields 用 label，不要写死字段名**。支持平台看 list_platforms 里 accountOverview=true：小红书/抖音/快手/视频号=读创作者中心页面文本（页面改版可能抓不到，届时带 warning，传 debug=true 可看抓到的文本行）；知乎/B站=站内接口；公众号=API 模式走官方统计（T+1）、扫码模式读后台首页。1h 缓存（force=true 强刷）；cachedOnly=true 只回本地最近一次快照、不触网。返回 {supported, overview, recent:{window:\"7d\"|\"yesterday\",fields}, growth:{sinceLast,day,week,month:{at,hours,delta}|null}, snapshots, account?, url?, cached?, warning?, note?}；不支持的平台 supported:false。涨跌好坏的判断是你的事，工具只如实读数。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string",
+            "description": "平台 id：xiaohongshu / douyin / kuaishou / shipinhao / zhihu / bilibili / weixin"
+          },
+          "accountId": {
+            "type": "string",
+            "description": "账号 id，默认 default"
+          },
+          "force": {
+            "type": "boolean",
+            "description": "true=绕过 1h 缓存强制重新读取"
+          },
+          "cachedOnly": {
+            "type": "boolean",
+            "description": "true=只返回本地最近一次快照，不打平台（没有快照时 empty:true）"
+          },
+          "debug": {
+            "type": "boolean",
+            "description": "true=附带抓到的页面文本行（页面型平台解析不到数字时用来校准）"
+          }
+        },
+        "required": [
+          "platform"
+        ]
+      }
+    },
+    {
+      "name": "get_metrics_overview",
+      "description": "运营看板：一次性汇总所有已发布文章的运营数据——各平台合计 + 分平台 + 逐篇明细，用于\"整体运营概览\"。字段自描述（totals / platforms[].fields 均为 [{key,label,value}]，跨平台按 canonical key 求和）。默认**只读用已入库数据**（打开即时、不发请求）；refresh=true 会逐条回采最新（走 1h 缓存，force=true 强刷，篇数多时较慢）。返回 {total, withData, totals:[...], platforms:[{platform,count,fields}], items:[{recordId,platform,title,postUrl,status,metrics}]}。",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string",
+            "description": "只看某平台（可选）"
+          },
+          "refresh": {
+            "type": "boolean",
+            "description": "true=逐条回采最新数据（否则用入库缓存，瞬时返回）"
+          },
+          "force": {
+            "type": "boolean",
+            "description": "配合 refresh：true=绕过 1h 缓存强制刷新"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.OmniGoAI/omnipost",
+  "title": "OmniPost",
+  "description": "Publish articles, image posts and videos to 40+ platforms via the local OmniPost app.",
+  "repository": {
+    "url": "https://github.com/OmniGoAI/omnipost-skill",
+    "source": "github",
+    "subfolder": "mcp"
+  },
+  "websiteUrl": "https://omnigoai.com/en/products/omnipost/",
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "omnipost-mcp",
+      "version": "0.1.0",
+      "transport": { "type": "stdio" }
+    }
+  ]
+}

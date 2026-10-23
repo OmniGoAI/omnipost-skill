@@ -1,0 +1,53 @@
+{
+  "name": "omnipost-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for OmniPost: lets Claude Code, Claude Desktop, Cursor and other MCP clients publish articles, image posts and videos to 40+ Chinese and overseas platforms through the OmniPost desktop app running on your machine.",
+  "mcpName": "io.github.OmniGoAI/omnipost",
+  "type": "module",
+  "bin": {
+    "omnipost-mcp": "src/index.js"
+  },
+  "main": "src/index.js",
+  "files": [
+    "src/",
+    "tools-snapshot.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test \"test/*.test.js\"",
+    "snapshot": "node scripts/snapshot.mjs"
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "undici": "^6.21.0"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "omnipost",
+    "claude",
+    "publishing",
+    "xiaohongshu",
+    "wechat",
+    "zhihu",
+    "csdn",
+    "bilibili",
+    "multi-platform"
+  ],
+  "homepage": "https://github.com/OmniGoAI/omnipost-skill/tree/main/mcp",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OmniGoAI/omnipost-skill.git",
+    "directory": "mcp"
+  },
+  "bugs": {
+    "url": "https://github.com/OmniGoAI/omnipost-skill/issues"
+  },
+  "license": "MIT",
+  "author": "OmniGoAI"
+}
