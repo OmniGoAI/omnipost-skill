@@ -1,6 +1,6 @@
 {
   "name": "omnipost-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "MCP server for OmniPost: lets Claude Code, Claude Desktop, Cursor and other MCP clients publish articles, image posts and videos to 40+ Chinese and overseas platforms through the OmniPost desktop app running on your machine.",
   "mcpName": "io.github.OmniGoAI/omnipost",
   "type": "module",

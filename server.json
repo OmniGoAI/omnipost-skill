@@ -9,13 +9,15 @@
     "subfolder": "mcp"
   },
   "websiteUrl": "https://omnigoai.com/en/products/omnipost/",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "omnipost-mcp",
-      "version": "0.1.0",
-      "transport": { "type": "stdio" }
+      "version": "0.1.1",
+      "transport": {
+        "type": "stdio"
+      }
     }
   ]
 }

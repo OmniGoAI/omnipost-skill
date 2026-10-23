@@ -21,6 +21,11 @@ export const DOWNLOAD_URL = 'https://omnigoai.com/en/download/omnipost/';
 // and retry it, uploading the same content twice.
 export const CALL_TIMEOUT_MS = 6 * 3600 * 1000;
 
+// Number of tool calls currently in progress. The process waits for these before exiting, so a
+// client that closes stdin right after sending a request still gets its answer.
+let inFlightCalls = 0;
+export const inFlight = () => inFlightCalls;
+
 // Node's built-in fetch drops a response body that stays idle for 5 minutes. The app's SSE stream
 // is silent while a long publish is running, so use a dispatcher without body/header timeouts.
 const longLivedAgent = new Agent({ bodyTimeout: 0, headersTimeout: 0, keepAliveTimeout: 60_000 });
@@ -81,7 +86,7 @@ export class AppConnection {
   async get() {
     if (this.client) return this.client;
     const endpoint = this.resolve();
-    const client = new Client({ name: 'omnipost-mcp-bridge', version: '0.1.0' });
+    const client = new Client({ name: 'omnipost-mcp-bridge', version: '0.1.1' });
     client.onclose = () => { if (this.client === client) this.client = null; };
     const connecting = client.connect(this.transportFactory(endpoint));
     let timer;
@@ -112,7 +117,7 @@ function shortCause(err) {
   return String(err?.cause?.code || err?.code || err?.message || err).slice(0, 160);
 }
 
-export function createBridgeServer({ connection = new AppConnection(), snapshot = loadSnapshot(), version = '0.1.0' } = {}) {
+export function createBridgeServer({ connection = new AppConnection(), snapshot = loadSnapshot(), version = '0.1.1' } = {}) {
   const server = new Server(
     { name: 'omnipost', version },
     {
@@ -136,6 +141,15 @@ export function createBridgeServer({ connection = new AppConnection(), snapshot 
   });
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    inFlightCalls += 1;
+    try {
+      return await handleCall(request);
+    } finally {
+      inFlightCalls -= 1;
+    }
+  });
+
+  async function handleCall(request) {
     const { name, arguments: args } = request.params;
     let client;
     try {
@@ -162,10 +176,10 @@ export function createBridgeServer({ connection = new AppConnection(), snapshot 
         isError: true,
       };
     }
-  });
+  }
 
   // When the AI client goes away, drop the link to the app too, so nothing is left open.
-  server.onclose = () => { connection.reset(); };
+  server.onclose = () => { if (inFlightCalls === 0) connection.reset(); };
 
   return server;
 }
