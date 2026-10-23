@@ -19,7 +19,7 @@ OmniPost 是「手」，不是「脑」：它不含模型、不写内容、不�
    - Claude Code：`~/.claude/skills/omnipost/`（项目内用 `.claude/skills/omnipost/`）
    - OpenClaw：`~/.openclaw/skills/omnipost/`（或工作区的 `skills/omnipost/`）
    - 其它 agent：放进它的 skills 目录，或把 `SKILL.md` 内容作为系统提示喂给它
-   - 想要 MCP 工具（可选）：`claude mcp add --transport sse omnipost http://127.0.0.1:8787/sse`
+   - 想要 MCP 工具（可选）：`claude mcp add omnipost -- npx -y omnipost-mcp`（[npm 包](./mcp/)，Claude Desktop / Cursor 等同样可用），或直连 `claude mcp add --transport sse omnipost http://127.0.0.1:8787/sse`
 3. 对 agent 说：**「把这篇发到知乎、CSDN，公众号先进草稿箱。」**
 
 更多客户端（Codex / Cursor / Cline / 任意 HTTP 调用）见 [docs/connect.md](./docs/connect.md)。

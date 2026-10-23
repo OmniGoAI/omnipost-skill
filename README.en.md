@@ -19,7 +19,7 @@ OmniPost is a pair of hands, not a brain: it contains no model, writes nothing, 
    - Claude Code: `~/.claude/skills/omnipost/` (or `.claude/skills/omnipost/` inside a project)
    - OpenClaw: `~/.openclaw/skills/omnipost/` (or `skills/omnipost/` in your workspace)
    - Any other agent: drop it into its skills directory, or feed `SKILL.md` as a system prompt
-   - Optional MCP tools: `claude mcp add --transport sse omnipost http://127.0.0.1:8787/sse`
+   - Optional MCP tools: `claude mcp add omnipost -- npx -y omnipost-mcp` ([npm package](./mcp/), also works in Claude Desktop / Cursor), or connect directly with `claude mcp add --transport sse omnipost http://127.0.0.1:8787/sse`
 3. Tell your agent: **"Publish this to Dev.to and Hashnode, and put a draft on WeChat."**
 
 Codex, Cursor, Cline and plain HTTP are covered in [docs/connect.md](./docs/connect.md).

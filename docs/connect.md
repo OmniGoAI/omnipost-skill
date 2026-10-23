@@ -22,7 +22,19 @@
 
 OmniPost 提供 44 个 MCP 工具（`list_platforms`、`list_accounts`、`list_alerts`、`create_draft`、`publish_post`、`schedule_post`、`get_publish_status`、`get_account_overview` 等），与 HTTP API 同构。
 
-**SSE 传输**（Claude Code 原生支持）：
+**npm 包（推荐，所有 MCP 客户端通用）**：`omnipost-mcp` 是一个开源的小桥接程序（源码在本仓库 `mcp/`），把请求转给你电脑上运行的 OmniPost。
+
+```
+claude mcp add omnipost -- npx -y omnipost-mcp
+```
+
+Claude Desktop、Cursor、Cline 等在 MCP 配置里写：
+
+```json
+{ "mcpServers": { "omnipost": { "command": "npx", "args": ["-y", "omnipost-mcp"] } } }
+```
+
+**SSE 传输**（Claude Code 原生支持，不需要 npm）：
 
 ```
 claude mcp add --transport sse omnipost http://127.0.0.1:8787/sse
